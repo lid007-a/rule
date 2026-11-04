@@ -1,0 +1,15 @@
+#!name = WeatherKit v3 修复
+#!desc = iOS 27.3 (WeatherKit v3)：修正槽位映射，补回未来一小时降水强度。需关闭官方 iRingo WeatherKit。
+#!system = iOS
+
+[Rule]
+DOMAIN,weather-analytics-events.apple.com,REJECT-DROP
+DOMAIN-SUFFIX,tthr.apple.com,REJECT-DROP,extended-matching
+DOMAIN,tether.edge.apple,REJECT-DROP,extended-matching
+AND,((OR,((IP-ASN,714,no-resolve),(IP-ASN,6185,no-resolve))),(PROTOCOL,QUIC)),REJECT-DROP
+
+[Script]
+🌤 WK v3 修复 = type=http-response, pattern=^https?:\/\/weatherkit\.apple\.com\/api\/v3\/weather\/, requires-body=1, binary-body-mode=1, engine=webview, script-path=https://raw.githubusercontent.com/lid007-a/rule/main/weatherkit/wk-v3-fix-a.js, argument=DataSets="airQuality,currentWeather,forecastDaily,forecastHourly,forecastNextHour,weatherAlerts"&Weather.Provider="WeatherKit"&WeatherAlerts.Provider="QWeatherWeb"&NextHour.Provider="ColorfulClouds"&AirQuality.Current.Pollutants.Provider="ColorfulClouds"&AirQuality.Calculate.Algorithm="EU_EAQI"&API.ColorfulClouds.Token=""&API.QWeather.Host="devapi.qweather.com"&API.QWeather.Token=""&API.WAQI.Token=""&Storage="Argument"&LogLevel="WARN"
+
+[MITM]
+hostname = %APPEND% weatherkit.apple.com
