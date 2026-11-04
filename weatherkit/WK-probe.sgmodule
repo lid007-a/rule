@@ -1,0 +1,14 @@
+#!name = WK 探针
+#!system = iOS
+
+[Rule]
+DOMAIN,weather-analytics-events.apple.com,REJECT-DROP
+DOMAIN-SUFFIX,tthr.apple.com,REJECT-DROP,extended-matching
+DOMAIN,tether.edge.apple,REJECT-DROP,extended-matching
+AND,((OR,((IP-ASN,714,no-resolve),(IP-ASN,6185,no-resolve))),(PROTOCOL,QUIC)),REJECT-DROP
+
+[Script]
+🌤 WK 探针 = type=http-request, pattern=^https?:\/\/weatherkit\.apple\.com\/api\/v3\/weather\/, engine=webview, script-path=https://raw.githubusercontent.com/lid007-a/rule/main/weatherkit/wk-probe-req.js
+
+[MITM]
+hostname = %APPEND% weatherkit.apple.com
