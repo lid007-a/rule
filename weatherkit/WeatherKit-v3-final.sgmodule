@@ -1,0 +1,15 @@
+#!name = WeatherKit v3 降水修复
+#!desc = 修复 iOS 27.3 (WeatherKit v3) 降水数据不显示。需关闭官方 iRingo WeatherKit。
+#!system = iOS
+
+[Rule]
+DOMAIN,weather-analytics-events.apple.com,REJECT-DROP
+DOMAIN-SUFFIX,tthr.apple.com,REJECT-DROP,extended-matching
+DOMAIN,tether.edge.apple,REJECT-DROP,extended-matching
+AND,((OR,((IP-ASN,714,no-resolve),(IP-ASN,6185,no-resolve))),(PROTOCOL,QUIC)),REJECT-DROP
+
+[Script]
+🌤 WK v3 降水 = type=http-response, pattern=^https?:\/\/weatherkit\.apple\.com\/api\/v3\/weather\/, requires-body=1, binary-body-mode=1, engine=webview, script-path=https://raw.githubusercontent.com/lid007-a/rule/main/weatherkit/wk-v3-final.js, argument=Weather.Provider=WeatherKit&NextHour.Provider=ColorfulClouds&LogLevel=WARN
+
+[MITM]
+hostname = %APPEND% weatherkit.apple.com
