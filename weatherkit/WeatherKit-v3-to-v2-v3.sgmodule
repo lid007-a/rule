@@ -1,0 +1,16 @@
+#!name = WeatherKit v3 回退到 v2
+#!desc = 把 iOS 27.3 的 v3 请求改写成 v2（含 dataSets），交给官方 v3.3.2 处理。
+#!system = iOS
+
+[Rule]
+DOMAIN,weather-analytics-events.apple.com,REJECT-DROP
+DOMAIN-SUFFIX,tthr.apple.com,REJECT-DROP,extended-matching
+DOMAIN,tether.edge.apple,REJECT-DROP,extended-matching
+AND,((OR,((IP-ASN,714,no-resolve),(IP-ASN,6185,no-resolve))),(PROTOCOL,QUIC)),REJECT-DROP
+
+[Script]
+🌤 WK v3 改写请求 = type=http-request, pattern=^https?:\/\/weatherkit\.apple\.com\/api\/v3\/weather\/, script-path=https://raw.githubusercontent.com/lid007-a/rule/main/weatherkit/wk-v3-to-v2-request2.js
+🌤 WK v2 响应处理 = type=http-response, pattern=^https?:\/\/weatherkit\.apple\.com\/api\/v2\/weather\/, requires-body=1, binary-body-mode=1, engine=webview, script-path=https://github.com/NSRingo/WeatherKit/releases/download/v3.3.2/response.bundle.js, argument=Weather.Provider=ColorfulClouds&NextHour.Provider=ColorfulClouds&API.ColorfulClouds.Token=&LogLevel=WARN
+
+[MITM]
+hostname = %APPEND% weatherkit.apple.com
