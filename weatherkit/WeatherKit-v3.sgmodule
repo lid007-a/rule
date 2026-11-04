@@ -1,9 +1,0 @@
-#!name = WeatherKit v3 修复
-#!desc = 为 iOS 27.3 的 WeatherKit v3 接口补回降水数据。需关闭官方 iRingo WeatherKit。
-#!system = iOS
-
-[Script]
-🌤 WeatherKit v3 降水 = type=http-response, pattern=^https?:\/\/weatherkit\.apple\.com\/api\/v3\/weather\/, requires-body=1, binary-body-mode=1, engine=webview, script-update-interval=0, script-path=https://raw.githubusercontent.com/lid007-a/rule/main/weatherkit/wk-v3-next-hour.js, argument=Weather.Provider=WeatherKit&NextHour.Provider=ColorfulClouds&LogLevel=WARN
-
-[MITM]
-hostname = %APPEND% weatherkit.apple.com
