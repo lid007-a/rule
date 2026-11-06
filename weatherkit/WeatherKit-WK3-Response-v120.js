@@ -1496,30 +1496,48 @@ function __nhSegs(G, base, cnt){
 
 async function __nhFetchMin(lat,lon){
   try{
-    var host=String(__arg('API.QWeather.Host','ny2x8ajpxn.re.qweatherapi.com')).trim();
-    var tok=String(__arg('API.QWeather.Token','')).trim();
-    if(!host||!tok){
-      console.log('⚠️ [天气增强] 和风参数缺失 · Host=['+host+'] Token=['+
-        (tok?('已填('+tok.length+'位)'):'空')+']');
-      return null;
-    }
-    var u='https://'+host+'/v7/minutely/5m?location='+lon+','+lat+'&key='+encodeURIComponent(tok);
+    var prov=String(__arg('NextHour.Provider','ColorfulClouds')).trim();
+    if(prov==='QWeather') return await __nhFetchMinQW(lat,lon);
+    var tok=String(__arg('API.ColorfulClouds.Token','')).trim() || 'Y2FpeXVuX25vdGlmeQ==';
+    var u='https://api.caiyunapp.com/v2.6/'+tok+'/'+lon+','+lat+'/minutely?unit=metric:v2';
     var r=await new Promise(function(res,rej){
-      $httpClient.get({url:u,headers:{'User-Agent':'curl/8.14.1'}},function(e,rp,b){ if(e) rej(e); else res(b); });
+      $httpClient.get({url:u,headers:{Referer:'https://caiyunapp.com/','User-Agent':'curl/8.14.1'}},function(e,rp,b){ if(e) rej(e); else res(b); });
     });
     var j=JSON.parse(typeof r==='string'?r:String(r));
-    if(!j||j.code!=='200'||!Array.isArray(j.minutely)) return null;
-    /* 和风返回 5 分钟降水量(mm)，×12 得 mm/h；展开成 1 分钟粒度 */
-    var out=[];
-    for(var i=0;i<j.minutely.length;i++){
-      var m=j.minutely[i];
-      var mm5=parseFloat(m.precip)||0;
-      var mmh=mm5*12;
-      var t0=Math.floor(new Date(m.fxTime).getTime()/1000);
-      for(var k=0;k<5;k++) out.push({t:t0+k*60, mmh:mmh, type:m.type||'rain'});
+    if(!j||j.status!=='ok'||!j.result||!j.result.minutely||j.result.minutely.status!=='ok'){
+      console.log('⚠️ [天气增强] 彩云分钟降水 · 状态异常 '+JSON.stringify(j&&j.result&&j.result.minutely&&j.result.minutely.status||j&&j.status));
+      return null;
     }
-    return {minutes:out, summary:j.summary||'', description:j.summary||''};
-  }catch(e){ console.log('⚠️ [天气增强] 和风分钟降水失败：'+(e&&e.message||e)); return null; }
+    var mnt=j.result.minutely;
+    var pr=mnt.precipitation_2h||[];
+    if(!pr.length) return null;
+    var t0=Math.floor(Date.now()/60000)*60;
+    var out=[];
+    for(var i=0;i<pr.length;i++){ out.push({t:t0+i*60, mmh:Number(pr[i])||0, type:'rain'}); }
+    var prob=(mnt.probability||[]).map(function(x){return Math.round(x*100);});
+    /* 彩云 minutely 只给降水强度，没有雪/冰类型；且 description 常不含“雨”字（如“未来2小时有降水”），
+       会被 Minute() 误判为 CLEAR。因此类型固定为雨：有任一点>0 时描述写“雨”，否则写“无雨”。 */
+    var anyRain=out.some(function(x){return x.mmh>0;});
+    var desc=anyRain?'雨':'无雨';
+    return {minutes:out, summary:desc, description:desc, probability:prob, provider:'彩云天气'};
+  }catch(e){ console.log('⚠️ [天气增强] 彩云分钟降水失败：'+(e&&e.message||e)); return null; }
+}
+
+/* 和风分钟降水（NextHour.Provider=QWeather 时使用） */
+async function __nhFetchMinQW(lat,lon){
+  var host=String(__arg('API.QWeather.Host','ny2x8ajpxn.re.qweatherapi.com')).trim();
+  var tok=String(__arg('API.QWeather.Token','')).trim();
+  if(!host||!tok) return null;
+  var u='https://'+host+'/v7/minutely/5m?location='+lon+','+lat+'&key='+encodeURIComponent(tok);
+  var r=await new Promise(function(res,rej){ $httpClient.get({url:u,headers:{'User-Agent':'curl/8.14.1'}},function(e,rp,b){ if(e) rej(e); else res(b); }); });
+  var j=JSON.parse(typeof r==='string'?r:String(r));
+  if(!j||j.code!=='200'||!Array.isArray(j.minutely)) return null;
+  var out=[];
+  for(var i=0;i<j.minutely.length;i++){
+    var m=j.minutely[i]; var mmh=(parseFloat(m.precip)||0)*12; var t0=Math.floor(new Date(m.fxTime).getTime()/1000);
+    for(var k=0;k<5;k++) out.push({t:t0+k*60, mmh:mmh, type:m.type||'rain'});
+  }
+  return {minutes:out, summary:j.summary||'', description:j.summary||'', probability:[], provider:'和风天气'};
 }
 
 /* ============ 构建 forecastNextHour 子树 + 挂载到根表 ============ */
