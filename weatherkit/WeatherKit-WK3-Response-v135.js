@@ -1484,7 +1484,8 @@ async function __aqRoot(body,url,st){
     }
     /* 指数与等级：Calculate 用本地算法重算（与 __aqCalcNative 同一套 __algoCalc/__aqhiCalc，
        默认 EU_EAQI——与 __aqCalcNative 的默认值一致；v134 死代码里写的是 WAQI_InstantCast_CN，
-       那是 __algoCalc 里没有的键，会导致计算失败）；
+       它虽在 __ALGO 表里，但量表是 0–500 的中美通用口径，与 EU_EAQI 的 0–60 口径不同，
+       且 50/100/150/200/300 的分档只对 WAQI 口径有意义）；
        其余 Provider 用服务方给的 AQI（chn/usa），等级按 50/100/150/200/300 分档。 */
     var __alg=__arg("AirQuality.Calculate.Algorithm","EU_EAQI");
     var __primary=null, __scaleStr=null;
