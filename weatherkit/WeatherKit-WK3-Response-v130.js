@@ -1511,14 +1511,18 @@ async function __nhFetchMin(lat,lon){
     var mnt=j.result.minutely;
     var pr=mnt.precipitation_2h||[];
     if(!pr.length) return null;
-    var t0=Math.floor(Date.now()/60000)*60;
+    /* 时间基准：彩云 server_time 对齐到整分钟（与 v3.3.2 一致）。precipitation_2h[0] 对应该分钟。 */
+    var st=Number(j.server_time)||Math.floor(Date.now()/1000);
+    var t0=Math.floor(new Date(st*1000).setSeconds(0,0)/1000);
     var out=[];
     for(var i=0;i<pr.length;i++){ out.push({t:t0+i*60, mmh:Number(pr[i])||0, type:'rain'}); }
-    var prob=(mnt.probability||[]).map(function(x){return Math.round(x*100);});
+    /* 彩云 probability 已是 0–100 百分比，不能再乘 100（会溢出 int8） */
+    var prob=(mnt.probability||[]).map(function(x){ var p=Math.round(Number(x)); return (p<0?0:(p>100?100:p)); });
     /* 彩云 minutely 只给降水强度，没有雪/冰类型；且 description 常不含“雨”字（如“未来2小时有降水”），
        会被 Minute() 误判为 CLEAR。因此类型固定为雨：有任一点>0 时描述写“雨”，否则写“无雨”。 */
     var anyRain=out.some(function(x){return x.mmh>0;});
     var desc=anyRain?'雨':'无雨';
+    for(var q=0;q<out.length;q++){ var seg=Math.floor(q/30); out[q].pc = (prob[seg]!==undefined?prob[seg]:0); }
     return {minutes:out, summary:desc, description:desc, probability:prob, provider:'彩云天气'};
   }catch(e){ console.log('⚠️ [天气增强] 彩云分钟降水失败：'+(e&&e.message||e)); return null; }
 }
@@ -3367,7 +3371,7 @@ function __nhBuildNew(mn){
   try{
     var FNH=__NHM.ForecastNextHour, mt=__NHM.mt;
     var now=Math.floor(Date.now()/1000);
-    var mins=mn.minutes.map(function(x){return {startTime:x.t, precipitationChance:0, precipitationIntensity:x.mmh, perceivedPrecipitationIntensity:0};});
+    var mins=mn.minutes.map(function(x){return {startTime:x.t, precipitationChance:(x.pc||0), precipitationIntensity:x.mmh, perceivedPrecipitationIntensity:0};});
     mins.length=Math.min(85,mins.length);
     var t0=mins.length?mins[0].startTime:now;
     mins=FNH.Minute(mins, mn.description||'', 'mmph');
